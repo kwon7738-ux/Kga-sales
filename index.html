@@ -155,7 +155,11 @@ td.r,th.r{text-align:right}
 .selbar .f{flex:0 1 auto}
 td.sel,th:first-child{width:1%}
 td.sel input,#selAll{width:16px;height:16px;cursor:pointer}
-td.addr-c{font-size:12px;color:var(--muted);min-width:200px;max-width:280px}
+td.addr-c{font-size:12px;color:var(--muted);min-width:150px;max-width:200px}
+body.wide main,body.wide .bar-in{max-width:1760px}
+#v-list th,#v-list td{padding-left:7px;padding-right:7px}
+td.rqc{min-width:260px;width:32%;font-size:12.5px;color:var(--ink)}
+.rqbox{white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;line-height:1.5;max-height:9em;overflow-y:auto}
 
 /* Drawer */
 .scrim{position:fixed;inset:0;background:rgba(8,20,24,.38);z-index:40}
@@ -568,7 +572,7 @@ function syncCustom(){for(const [id,e] of Object.entries(S.E)){if(e.nb&&!HIDX.ha
 /* ================= routing ================= */
 const VIEWS=["dashboard","list","report","users"];
 const curView=()=>VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):"dashboard";
-function route(){const v=curView();VIEWS.forEach(n=>$("#v-"+n).hidden=n!==v);document.querySelectorAll(".tabs a").forEach(a=>a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));render(v)}
+function route(){const v=curView();document.body.classList.toggle("wide",v==="list");VIEWS.forEach(n=>$("#v-"+n).hidden=n!==v);document.querySelectorAll(".tabs a").forEach(a=>a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));render(v)}
 function render(v){v=v||curView();if(v==="users"&&!S.isAdmin){location.hash="dashboard";return}if(v==="dashboard")renderDash();else if(v==="list")renderList();else if(v==="users")renderUsers();else renderReport()}
 function goList(f){Object.assign(S.list,{q:"",rg:"",sg:"",ty:"",gb:"",stg:"",hold:"",pri:"",cmp:"",sp:"",rec:false,limit:150},f||{});syncFilterUI();if(location.hash!=="#list")location.hash="list";else renderList();window.scrollTo(0,0)}
 function bindOpen(root){(typeof root==="string"?$(root):root).querySelectorAll("[data-id]").forEach(el=>el.onclick=ev=>{if(ev.target.closest("input"))return;openDrawer(el.dataset.id)})}
@@ -675,7 +679,8 @@ function renderList(){const L=S.list;let rows=filtered();
   rows.sort((a,b)=>{const x=key(a),y=key(b);return (x<y?-1:x>y?1:0)*L.dir});
   $("#listCount").textContent=`${rows.length.toLocaleString()}곳`+(rows.length>L.limit?` 중 ${L.limit.toLocaleString()}곳 표시`:"");
   const vis=rows.slice(0,L.limit);
-  $("#listBody").innerHTML=vis.length?vis.map(h=>{const e=E(h.id),g=gbOf(h.id),la=lastAct(h.id);return `<tr data-id="${esc(h.id)}"><td class="sel"><input type="checkbox" data-sel="${esc(h.id)}" ${S.sel.has(h.id)?"checked":""} aria-label="${esc(h.nm)} 선택"></td><td class="nm">${esc(h.nm)}<small>${esc(h.rg)} ${esc(h.sg)}${h.custom?" · 추가 병원":""}</small></td><td style="white-space:nowrap">${esc(h.ty)}</td><td class="addr-c">${esc(h.addr)}</td><td class="r num">${h.bed}</td><td class="r num">${h.or}</td><td class="r num" style="white-space:nowrap">${h.all}<small style="display:block;color:var(--muted);font-size:11px">정형 ${h.os} · 신경 ${h.ns}</small></td><td>${gbTag(g)}</td><td style="white-space:nowrap">${g==="영업대상"?pill(stg(h.id))+" "+holdTag(e):""}</td><td>${prioHtml(e.pri)}</td><td>${vendHtml(e)}</td><td class="note" style="white-space:nowrap">${la?`<span class="mono">${la.d?md(la.d):"미상"}</span> ${esc(la.k)}`:""}</td><td class="note" style="min-width:200px"><span class="clamp">${esc(e.rq||"")}</span></td></tr>`}).join(""):`<tr><td colspan="13" class="empty">조건에 맞는 병원이 없습니다. 필터를 줄여 보세요.</td></tr>`;
+  $("#listBody").innerHTML=vis.length?vis.map(h=>{const e=E(h.id),g=gbOf(h.id),la=lastAct(h.id);return `<tr data-id="${esc(h.id)}"><td class="sel"><input type="checkbox" data-sel="${esc(h.id)}" ${S.sel.has(h.id)?"checked":""} aria-label="${esc(h.nm)} 선택"></td><td class="nm">${esc(h.nm)}<small>${esc(h.rg)} ${esc(h.sg)}${h.custom?" · 추가 병원":""}</small></td><td style="white-space:nowrap">${esc(h.ty)}</td><td class="addr-c">${esc(h.addr)}</td><td class="r num">${h.bed}</td><td class="r num">${h.or}</td><td class="r num" style="white-space:nowrap">${h.all}<small style="display:block;color:var(--muted);font-size:11px">정형 ${h.os} · 신경 ${h.ns}</small></td><td>${gbTag(g)}</td><td style="white-space:nowrap">${g==="영업대상"?pill(stg(h.id))+" "+holdTag(e):""}</td><td>${prioHtml(e.pri)}</td><td>${vendHtml(e)}</td><td class="note" style="white-space:nowrap">${la?`<span class="mono">${la.d?md(la.d):"미상"}</span> ${esc(la.k)}`:""}</td><td class="rqc">${e.rq?`<div class="rqbox">${esc(e.rq)}</div>`:""}</td></tr>`}).join(""):`<tr><td colspan="13" class="empty">조건에 맞는 병원이 없습니다. 필터를 줄여 보세요.</td></tr>`;
+  document.querySelectorAll("#listBody .rqbox").forEach(x=>{x.scrollTop=x.scrollHeight});
   $("#more").hidden=rows.length<=L.limit;
   document.querySelectorAll("th button[data-sort]").forEach(b=>{const k=b.dataset.sort;b.textContent=b.textContent.replace(/ [▲▼]$/,"")+(L.sort===k?(L.dir>0?" ▲":" ▼"):"")});
   S.vis=vis.map(h=>h.id);$("#selAll").checked=vis.length>0&&vis.every(h=>S.sel.has(h.id));
