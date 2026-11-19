@@ -262,6 +262,7 @@ legend{font-weight:700;font-size:13px;padding:0 6px;color:var(--accent)}
 .vb{display:inline-block;padding:0 6px;border-radius:4px;font-size:11px;font-weight:600;background:var(--warn-bg);color:var(--warn);white-space:nowrap}
 .vb.k{background:var(--accent-weak);color:var(--accent)}
 .hold{display:inline-block;padding:0 6px;border-radius:4px;font-size:11px;font-weight:700;background:var(--danger-bg);color:var(--danger);white-space:nowrap}
+.rqlog{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.55;max-height:220px;overflow:auto;margin-bottom:6px}.rqlog.empty{color:var(--muted)}.rqnew{display:grid;gap:6px;margin-top:6px}.rqnew textarea{min-height:64px}
 .hold.b{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .gbt{display:inline-block;padding:1px 7px;border-radius:4px;font-size:12px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
 .gbt.t{color:var(--accent);border-color:transparent;background:var(--accent-weak)}
@@ -373,7 +374,7 @@ legend{font-weight:700;font-size:13px;padding:0 6px;color:var(--accent)}
       </div>
     </div>
     <div class="panel">
-      <div class="sec-head"><h2>단계별 진행 보드</h2><span class="sub">방문예정 → 현장실사 → 제안 → 검토·협의 → 계약 · 멈춤(보류·불가) 병원 제외</span><span class="grow"></span>
+      <div class="sec-head"><h2>단계별 진행 보드</h2><span class="sub">방문예정 → 실사방문 → 방문제안 → 검토협의 → 계약 · 멈춤(보류·불가) 병원 제외</span><span class="grow"></span>
         <select class="fld" id="bdRegion" aria-label="지역 선택"></select></div>
       <div class="board" id="board"></div>
     </div>
@@ -398,7 +399,7 @@ legend{font-weight:700;font-size:13px;padding:0 6px;color:var(--accent)}
         <select class="fld" id="fTy" aria-label="병원 종류"><option value="">종류 전체</option><option>종합병원</option><option>병원</option><option>의원</option></select>
         <select class="fld" id="fGb" aria-label="구분"></select>
         <select class="fld" id="fStg" aria-label="영업단계"></select>
-        <select class="fld" id="fHold" aria-label="멈춤"><option value="">멈춤 전체</option><option value="-">진행 (멈춤 없음)</option><option>보류</option><option>불가</option></select>
+        <select class="fld" id="fHold" aria-label="멈춤"><option value="">멈춤 전체</option><option value="-">진행</option><option>제안</option><option>보류</option><option>불가</option></select>
         <select class="fld" id="fPri" aria-label="우선순위"><option value="">우선순위 전체</option><option>A</option><option>B</option><option>C</option><option value="-">미지정</option></select>
         <select class="fld" id="fCmp" aria-label="경쟁"><option value="">경쟁 전체</option><option value="bo">타사 청구부스 있음</option><option value="ki">타사 키오스크 있음</option><option value="none">부스·키오스크 없음</option><option value="target">공략 후보 (실손24 미연동·부스 없음)</option></select>
         <select class="fld" id="fSp" aria-label="일정"></select>
@@ -429,7 +430,7 @@ legend{font-weight:700;font-size:13px;padding:0 6px;color:var(--accent)}
         <th><button data-sort="nm">병원명</button></th><th>종류</th><th>주소</th>
         <th class="r"><button data-sort="bed">병상</button></th><th class="r"><button data-sort="or">수술실</button></th><th class="r"><button data-sort="doc">의사 수</button></th>
         <th>구분</th><th><button data-sort="stg">단계</button></th><th><button data-sort="pri">우선</button></th><th>경쟁</th>
-        <th><button data-sort="la">최근 활동</button></th><th>병원 요청·협의</th>
+        <th><button data-sort="la">최근 활동</button></th><th>병원방문내용</th>
       </tr></thead><tbody id="listBody"></tbody></table></div>
       <div style="text-align:center"><button class="btn" id="more" hidden>더 보기</button></div>
     </div>
@@ -492,12 +493,13 @@ const BASE=[["SE-0001","서울","강남구","강남베드로병원","종합병�
 (function(){
 "use strict";
 /* ================= definitions ================= */
-const STAGES=["0.대상선정","1.방문예정","2.현장실사","3.제안","4.검토·협의","5.계약","6.운영전환"];
+const STAGES=["0.대상선정","1.방문예정","2.실사방문","3.방문제안","4.검토협의","5.계약","6.운영전환"];
+const STG_OLD={"2.현장실사":"2.실사방문","3.제안":"3.방문제안","4.검토·협의":"4.검토협의"};const normStg=v=>STG_OLD[v]||v;
 const OPI=6;
 const SN=s=>String(s||STAGES[0]).slice(2);
 const GB=["영업대상","당사운영","당사철수","영업제외"];
 const GBL={"":"미분류","영업대상":"영업대상","당사운영":"당사 운영","당사철수":"당사 철수","영업제외":"영업 제외"};
-const HOLD=["보류","불가"];
+const HOLD=["제안","보류","불가"];const isStop=e=>!!e&&(e.hold==="보류"||e.hold==="불가");
 const ACTK=["실사","방문","전화","우편발송","미팅"];
 const VISITK=["실사","방문","미팅"];
 const KIV=["이브이케어","내어드림","비플러스랩","메디온시스템","메디홈"];
@@ -508,7 +510,7 @@ const PREFIX={"서울":"SE","경기":"GG","인천":"IC","부산":"BS","대구":"
 const REGIONS=Object.keys(PREFIX);
 const LABEL={gb:"구분",stg:"영업단계",hold:"멈춤",holdD:"재접촉일",holdR:"멈춤 사유",pri:"우선순위",na:"다음 할 일",nd:"다음 일정",
   s24:"실손24 연동",ki:"청구 키오스크",kiV:"키오스크 업체",bo:"청구 부스",boV:"청구부스 업체",sp:"부스 공간",vp:"방문 환자",vpn:"방문환자 세부",emr:"EMR",
-  ob:"주요 반론",rq:"병원 요청·협의",ctD:"계약일",opD:"운영 시작일",agent:"담당 설계사",wdD:"철수일",wdR:"철수 사유"};
+  ob:"주요 반론",rq:"병원방문내용",ctD:"계약일",opD:"운영 시작일",agent:"담당 설계사",wdD:"철수일",wdR:"철수 사유"};
 const MAINF=Object.keys(LABEL);
 const AREAF=["rq","vpn","holdR","wdR"];
 
@@ -534,20 +536,20 @@ const weekEnd=()=>{const t=parseD(todayStr());const e=new Date(t);e.setDate(t.ge
 
 const E=id=>S.E[id]||{};
 const gbOf=id=>E(id).gb||"";
-const stg=id=>E(id).stg||STAGES[0];
-const sIdx=s=>Math.max(0,STAGES.indexOf(s||STAGES[0]));
+const stg=id=>normStg(E(id).stg)||STAGES[0];
+const sIdx=s=>Math.max(0,STAGES.indexOf(normStg(s)||STAGES[0]));
 const acts=id=>S.A.get(id)||[];
 const lastAct=id=>acts(id)[0]||null;
 const visits=id=>acts(id).filter(a=>VISITK.includes(a.k)).length;
 const isTarget=id=>gbOf(id)==="영업대상";
-const isLive=id=>{const i=sIdx(stg(id));return isTarget(id)&&!E(id).hold&&i>=2&&i<=5};
+const isLive=id=>{const i=sIdx(stg(id));return isTarget(id)&&!isStop(E(id))&&i>=2&&i<=5};
 const isMiss=id=>{if(!isLive(id))return false;const e=E(id);if(!e.na&&!e.nd)return true;const la=lastAct(id);if(!la||!la.d)return true;return dday(la.d)<-30};
 const hasRec=id=>{const e=S.E[id];return !!(e&&Object.keys(e).some(k=>!["up","src","nb"].includes(k)&&e[k]&&!(Array.isArray(e[k])&&!e[k].length)))||acts(id).length>0};
 const ctText=e=>(e.ct||[]).filter(c=>c.n||c.tel).map(c=>[c.n,c.tel].filter(Boolean).join(" ")).join(" / ");
 
 function pill(s){const i=sIdx(s);return `<span class="pill st${i}">${esc(SN(s))}</span>`}
 function gbTag(g){const c={"영업대상":"t","당사운영":"o","당사철수":"w"}[g]||"";return `<span class="gbt ${c}">${esc(GBL[g||""])}</span>`}
-function holdTag(e){return e.hold?`<span class="hold ${e.hold==="보류"?"b":""}">${esc(e.hold)}</span>`:""}
+function holdTag(e){return e.hold?`<span class="hold ${e.hold==="불가"?"":"b"}">${esc(e.hold)}</span>`:""}
 function prioHtml(p){return p?`<span class="prio ${esc(p)}">${esc(p)}</span>`:""}
 function oxHtml(v){return v==="O"?`<span class="ox o">O</span>`:v==="X"?`<span class="ox x">X</span>`:`<span class="ox n">–</span>`}
 function vendHtml(e){const a=[];if(e.boV||e.bo==="O")a.push(`<span class="vb">부스 ${esc(e.boV||"업체 미상")}</span>`);if(e.kiV||e.ki==="O")a.push(`<span class="vb k">키오스크 ${esc(e.kiV||"업체 미상")}</span>`);return a.join(" ")}
@@ -583,7 +585,7 @@ function renderDash(){
   const over=todo.filter(h=>E(h.id).nd<t).length,week=todo.filter(h=>{const d=E(h.id).nd;return d>=t&&d<=we}).length;
   const k=[
     {l:"영업대상",v:tg.length,h:"구분 ‘영업대상’",f:{gb:"영업대상"}},
-    {l:"진행 중",v:live,h:"현장실사~계약 · 멈춤 제외",f:{sp:"live"}},
+    {l:"진행 중",v:live,h:"실사방문~계약 · 보류·불가 제외",f:{sp:"live"}},
     {l:"이번 주 할 일",v:week,h:"오늘~일요일",f:{sp:"week"},cls:week?"warnk":""},
     {l:"기한 지남",v:over,h:"다음 일정이 지난 병원",f:{sp:"over"},cls:over?"alert":""},
     {l:"놓친 병원",v:tg.filter(h=>isMiss(h.id)).length,h:"할 일 없음·30일 무연락",f:{sp:"miss"}},
@@ -594,7 +596,7 @@ function renderDash(){
   $("#kpis").querySelectorAll("button").forEach(b=>b.onclick=()=>goList(k[+b.dataset.k].f));
   // funnel: stages 0-4 among targets, stage 5 = 당사 운영 (operating)
   const reach=i=>i>=OPI?own:tg.filter(h=>sIdx(stg(h.id))>=i).length+(i>=1?own:0);
-  const hold=i=>tg.filter(h=>sIdx(stg(h.id))===i&&E(h.id).hold).length;
+  const hold=i=>tg.filter(h=>sIdx(stg(h.id))===i&&isStop(E(h.id))).length;
   $("#funnel").innerHTML=STAGES.map((s,i)=>{const v=i<OPI?cnt[i]:own;const nx=reach(i+1),cur=reach(i);const cv=i<OPI&&cur?Math.round(nx/cur*100)+"%":"";const hd=i<OPI?hold(i):0;
     return `<button class="fn" data-i="${i}"><span class="k"><i class="bg${i}"></i>${i+1}. ${SN(s)}</span><span class="v">${v.toLocaleString()}</span><span class="h">${i===OPI?"부스 운영 시작":hd?`멈춤 ${hd}곳 포함`:"&nbsp;"}</span>${cv?`<span class="cv" title="다음 단계로 넘어간 비율">→ ${cv}</span>`:""}</button>`}).join("");
   $("#funnel").querySelectorAll("button").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;goList(i===OPI?{gb:"당사운영"}:{gb:"영업대상",stg:STAGES[i]})});
@@ -611,7 +613,7 @@ function renderDash(){
   bindOpen("#miss");
   // board
   const br=$("#bdRegion");if(!br.options.length){br.innerHTML=`<option value="">전체 지역</option>`+REGIONS.map(r=>`<option>${r}</option>`).join("");br.value=lsGet("hs_bdrg","");br.onchange=()=>{lsSet("hs_bdrg",br.value);renderDash()}}
-  $("#board").innerHTML=[1,2,3,4,5].map(i=>{const hs=tg.filter(h=>sIdx(stg(h.id))===i&&!E(h.id).hold&&(!br.value||h.rg===br.value)).sort(byNext);
+  $("#board").innerHTML=[1,2,3,4,5].map(i=>{const hs=tg.filter(h=>sIdx(stg(h.id))===i&&!isStop(E(h.id))&&(!br.value||h.rg===br.value)).sort(byNext);
     return `<div class="col"><h3><i class="pill st${i}" style="border:0;padding:0"></i>${SN(STAGES[i])} <span>${hs.length}</span></h3>${hs.length?hs.slice(0,40).map(h=>{const e=E(h.id),la=lastAct(h.id);return `<button class="card" data-id="${esc(h.id)}"><span class="t">${prioHtml(e.pri)}<span>${esc(h.nm)}</span></span><span class="m"><span>${esc(h.rg)} ${esc(h.sg)}</span><span>${h.bed}병상</span><span>방문 ${visits(h.id)}회</span>${la&&la.d?`<span>최근 ${md(la.d)} ${esc(la.k)}</span>`:""}</span>${vendHtml(e)?`<span class="m">${vendHtml(e)}</span>`:""}<span class="n">${e.nd?`${ddHtml(e.nd)} `:""}${esc(e.na||"다음 할 일 없음")}</span></button>`}).join(""):`<span class="mini">없음</span>`}</div>`}).join("");
   bindOpen("#board");
   // competition
@@ -661,7 +663,7 @@ function filtered(){const L=S.list,q=L.q.trim().toLowerCase(),t=todayStr(),we=we
       if(sp==="live"&&!isLive(h.id))return false;
       if(sp==="week"&&!(e.nd&&e.nd>=t&&e.nd<=we&&isTarget(h.id)))return false;
       if(sp==="over"&&!(e.nd&&e.nd<t&&isTarget(h.id)))return false;
-      if(sp==="nodate"&&!(isTarget(h.id)&&!e.nd&&!e.hold&&sIdx(stg(h.id))<OPI))return false;
+      if(sp==="nodate"&&!(isTarget(h.id)&&!e.nd&&!isStop(e)&&sIdx(stg(h.id))<OPI))return false;
       if(sp==="miss"&&!isMiss(h.id))return false;
       if(sp==="mail"&&!acts(h.id).some(a=>a.k==="우편발송"))return false;
       if(sp==="nomail"&&acts(h.id).some(a=>a.k==="우편발송"))return false}
@@ -691,7 +693,7 @@ const sel=(k,opts,v,empty)=>`<select id="fd_${k}" data-k="${k}" aria-label="${es
 const vendor=(k,list,v)=>{const known=list.includes(v);return `<div class="vsel"><select data-vk="${k}" aria-label="${esc(LABEL[k])}"><option value="">선택 안 함</option>${list.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}<option value="__direct" ${v&&!known?"selected":""}>직접입력</option></select><input data-k="${k}" id="fd_${k}" value="${esc(v&&!known?v:"")}" placeholder="업체명 직접입력" ${v&&!known?"":"hidden"} aria-label="${esc(LABEL[k])} 직접입력"></div>`};
 
 function openDrawer(id){const h=HIDX.get(id);if(!h)return;S.openId=id;const e=E(id);
-  draft=JSON.parse(JSON.stringify(e));if(!draft.stg)draft.stg=STAGES[0];if(!draft.ct||!draft.ct.length)draft.ct=[{n:"",role:"",tel:""}];
+  draft=JSON.parse(JSON.stringify(e));draft.stg=normStg(draft.stg)||STAGES[0];draft._rqD=todayStr();draft._rqN="";if(!draft.ct||!draft.ct.length)draft.ct=[{n:"",role:"",tel:""}];
   newAct={d:todayStr(),k:"",who:"",memo:"",res:""};
   drawDrawer()}
 function drawDrawer(){const id=S.openId,h=HIDX.get(id),e=E(id),d=draft;
@@ -708,13 +710,13 @@ function drawDrawer(){const id=S.openId,h=HIDX.get(id),e=E(id),d=draft;
 
       <fieldset><legend>영업 진행</legend>
         ${F("구분",segH("gb",[["","미분류"]].concat(GB.map(x=>[x,GBL[x]])),g,"구분"),"full","영업대상으로 지정해야 영업 흐름·현황판에 잡힙니다 · 미분류는 아직 판단하지 않은 병원")}
-        ${F("영업단계",segH("stg",STAGES.map(s=>[s,SN(s)]),d.stg,"영업단계"),"full","대상선정 → 방문예정 → 현장실사 → 제안 → 검토·협의 → 계약 → 운영전환(부스 운영 시작)")}
+        ${F("영업단계",segH("stg",STAGES.map(s=>[s,SN(s)]),d.stg,"영업단계"),"full","대상선정 → 방문예정 → 실사방문 → 방문제안 → 검토협의 → 계약 → 운영전환(부스 운영 시작)")}
         <div id="sugg" class="suggest" hidden></div>
-        ${F("멈춤",segH("hold",[["","진행"],["보류","보류"],["불가","불가"]],d.hold||""),"","보류는 재접촉일, 불가는 사유를 적습니다")}
+        ${F("멈춤",segH("hold",[["","진행"],["제안","제안"],["보류","보류"],["불가","불가"]],d.hold||""),"","보류·불가는 영업 흐름·진행 보드에서 빠집니다 · 재접촉일·사유는 선택 입력")}
         ${F("우선순위",segH("pri",[["A","A"],["B","B"],["C","C"]],d.pri||""),"","대상선정 때 꼭 고릅니다 · A 이번 달 · B 분기 안 · C 장기")}
-        ${d.hold?F("재접촉일",dateIn("holdD",d.holdD)):""}${d.hold?F("멈춤 사유",inp("holdR",d.holdR,"예) 기존 업체 계약 2027.3 만료")):""}
+        ${isStop(d)?F("재접촉일 (선택)",dateIn("holdD",d.holdD)):""}${isStop(d)?F((d.hold==="불가"?"불가":"보류")+" 사유 (선택)",inp("holdR",d.holdR,"예) 기존 업체 계약 2027.3 만료")):""}
         ${F("주요 반론",sel("ob",OBJ,d.ob))}
-        ${F("병원 요청·협의",area("rq",d.rq,"대가·수수료 관련은 [법무 검토 필요] 표기"),"full")}
+        ${F("병원방문내용",(d._rqEdit?area("rq",d.rq,""):(d.rq?`<div class="rqlog">${esc(d.rq)}</div><button type="button" class="btn ghost sm" data-rqedit="1">기존 내용 고치기</button>`:`<div class="rqlog empty">아직 기록이 없습니다.</div>`))+`<div class="rqnew"><div class="dt">${inp("_rqD",d._rqD,"","date")}<button type="button" class="btn sm" data-today="_rqD">오늘</button></div><textarea id="fd__rqN" data-k="_rqN" placeholder="이번 방문 내용 — 저장하면 기존 내용 밑에 날짜와 함께 추가됩니다" aria-label="새 병원방문내용">${esc(d._rqN||"")}</textarea></div>`,"full","대가·수수료 관련은 [법무 검토 필요] 표기")}
         ${F("다음 할 일",inp("na",d.na,"예) 행정원장 미팅 요청, 제안서 재설명"),"full")}
         ${F("다음 일정",dateIn("nd",d.nd,true),"full","비워도 저장됩니다 · 비어 있으면 현황판 ‘놓친 병원’에 표시")}
       </fieldset>
@@ -764,6 +766,7 @@ function drawDrawer(){const id=S.openId,h=HIDX.get(id),e=E(id),d=draft;
     else if(b.dataset.plus){const k=b.dataset.plus;draft[k]=addDays(todayStr(),+b.dataset.n);form.querySelector(`[data-k="${k}"]`).value=draft[k]}
     else if(b.dataset.copy!==undefined){copy(b.dataset.copy)}
     else if(b.id==="nbEdit"){closeDrawer();openAdd(id)}
+    else if(b.dataset.rqedit){draft._rqEdit=true;keepDraftAndRedraw()}
     else if(b.dataset.k&&b.dataset.v!==undefined){const k=b.dataset.k,v=b.dataset.v;
       if(k==="__ak"){newAct.k=newAct.k===v?"":v;b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===newAct.k));suggest();return}
       const cur=draft[k]||"";draft[k]=(k==="stg"||k==="gb"||k==="hold")?v:(cur===v?"":v);if(k==="gb")draft._gbSet=true;
@@ -791,7 +794,7 @@ function cleanDoc(d,old){const n={};
   for(const k of MAINF){const v=(d[k]||"").toString().trim();if(v)n[k]=v}
   const ct=(d.ct||[]).map(c=>({n:(c.n||"").trim(),role:(c.role||"").trim(),tel:(c.tel||"").trim()})).filter(c=>c.n||c.role||c.tel);if(ct.length)n.ct=ct;
   n.stg=d.stg||STAGES[0];if(old.nb)n.nb=old.nb;if(old.src)n.src=old.src;
-  if(!n.hold){delete n.holdD;delete n.holdR}
+  if(!isStop(n)){delete n.holdD;delete n.holdR}
   return n}
 async function save(){const id=S.openId,h=HIDX.get(id),old=E(id),btn=$("#drSave"),msg=$("#drMsg");
   if(sIdx(draft.stg)===OPI&&!draft.opD){msg.textContent="운영전환은 운영 시작일(부스를 실제로 운영한 날)을 넣어야 저장됩니다.";return}
@@ -799,8 +802,9 @@ async function save(){const id=S.openId,h=HIDX.get(id),old=E(id),btn=$("#drSave"
   const hasAct=!!(newAct.k&&(newAct.memo.trim()||newAct.who.trim()||newAct.res.trim()||newAct.k==="우편발송"||newAct.k==="전화"||newAct.k==="실사"||newAct.k==="방문"||newAct.k==="미팅"));
   if(newAct.memo.trim()&&!newAct.k){msg.textContent="활동 기록의 종류(실사·방문·전화·우편발송·미팅)를 골라 주세요.";return}
   if(!draft.gb&&!draft._gbSet&&(hasAct||draft.na||draft.nd))draft.gb="영업대상";
-  if(draft.gb==="영업대상"&&!draft.hold){const si=sIdx(draft.stg);
+  if(draft.gb==="영업대상"&&!isStop(draft)){const si=sIdx(draft.stg);
     if(!draft.pri){msg.textContent="영업대상은 우선순위(A·B·C)를 골라야 저장됩니다.";return}}
+  const rqN=(draft._rqN||"").trim();if(rqN){draft.rq=((draft.rq||"").replace(/\s+$/,"")+(draft.rq&&draft.rq.trim()?"\n":"")+`[${draft._rqD||todayStr()}] ${rqN}`);draft._rqN="";const t=$("#fd__rqN");if(t)t.value=""}
   const next=cleanDoc(draft,old);
   const ch=[];for(const k of MAINF){const a=old[k]||(k==="stg"?STAGES[0]:""),b=next[k]||(k==="stg"?STAGES[0]:"");if(a!==b)ch.push(AREAF.includes(k)?[LABEL[k]+" 수정"]:[LABEL[k],k==="gb"?GBL[a]:a,k==="gb"?GBL[b]:b])}
   if(JSON.stringify(old.ct||[])!==JSON.stringify(next.ct||[]))ch.push(["담당자 수정"]);
@@ -894,9 +898,9 @@ function reportData(){const [from,to]=rpRange(),rg=$("#rpRg").value;const hs=H.f
   const own=hs.filter(h=>gbOf(h.id)==="당사운영"),wd=hs.filter(h=>gbOf(h.id)==="당사철수");
   const ctN=hs.filter(h=>inR(E(h.id).ctD)).length,opN=hs.filter(h=>inR(E(h.id).opD)).length;
   const bySt=(a,b)=>sIdx(stg(b.id))-sIdx(stg(a.id))||byNext(a,b);
-  const prog=tg.filter(h=>{const i=sIdx(stg(h.id));return i>=3&&i<=5&&!E(h.id).hold}).sort(bySt);
+  const prog=tg.filter(h=>{const i=sIdx(stg(h.id));return i>=3&&i<=5&&!isStop(E(h.id))}).sort(bySt);
   const plan=tg.filter(h=>{const e=E(h.id);return (e.na||e.nd)&&e.hold!=="불가"}).sort(byNext);
-  const hold=tg.filter(h=>E(h.id).hold);
+  const hold=tg.filter(h=>isStop(E(h.id)));
   return {from,to,rg,hs,pa,ac,tg,cnt,own,wd,ctN,opN,prog,plan,hold}}
 function reportHtml(R){const by=$("#rpBy").value.trim(),sub=$("#rpTo2").value.trim(),memo=$("#rpMemo").value.trim();
   const cell=s=>esc(s||"");const ox=v=>v||"–";let no=0;const H4=t=>`<h4>${++no}. ${t}</h4>`;
@@ -910,8 +914,8 @@ function reportHtml(R){const by=$("#rpBy").value.trim(),sub=$("#rpTo2").value.tr
     ${row("주소",h.addr)}
     <tr><th>병상</th><th>수술실</th><th>의사 수</th><th>EMR</th><th>실손24</th><th>키오스크</th><th>청구부스</th><th>부스공간</th><th>방문환자</th><th>최근 활동</th></tr>
     <tr><td class="c">${h.bed}</td><td class="c">${h.or}</td><td class="c">${h.all}<br>정형${h.os}·신경${h.ns}</td><td class="c">${cell(e.emr)||"–"}</td><td class="c">${ox(e.s24)}</td><td class="c">${ox(e.ki)}${e.kiV?"<br>"+cell(e.kiV):""}</td><td class="c">${ox(e.bo)}${e.boV?"<br>"+cell(e.boV):""}</td><td class="c">${ox(e.sp)}</td><td class="c">${ox(e.vp)}</td><td class="c">${la[0]&&la[0].d?md(la[0].d):"–"}</td></tr>
-    ${row("방문환자 세부",e.vpn)}${row("담당자",(e.ct||[]).filter(c=>c.n||c.tel).map(c=>[c.n,c.role,c.tel].filter(Boolean).join(" ")).join(" / "))}${la.map(a=>row(`${a.d?md(a.d):"날짜 미상"} ${a.k}`,[a.who,a.memo,a.res?"→ "+a.res:""].filter(Boolean).join(" · "))).join("")}${row("주요 반론",e.ob)}${row("병원 요청·협의",e.rq)}${e.hold?row("멈춤 사유",[e.holdR,e.holdD?"재접촉 "+fd(e.holdD):""].filter(Boolean).join(" · ")):""}${row("다음 할 일",[e.na,e.nd?"("+fd(e.nd)+")":"(일정 미정)"].filter(Boolean).join(" "))}</table>`};
-  o+=H4(`진행 중 병원 (제안·검토·협의·계약 ${R.prog.length}곳)`)+(R.prog.length?R.prog.map(card).join(""):`<p class="rp-empty">제안 단계 이후 진행 중인 병원이 없습니다.</p>`);
+    ${row("방문환자 세부",e.vpn)}${row("담당자",(e.ct||[]).filter(c=>c.n||c.tel).map(c=>[c.n,c.role,c.tel].filter(Boolean).join(" ")).join(" / "))}${la.map(a=>row(`${a.d?md(a.d):"날짜 미상"} ${a.k}`,[a.who,a.memo,a.res?"→ "+a.res:""].filter(Boolean).join(" · "))).join("")}${row("주요 반론",e.ob)}${row("병원방문내용",e.rq)}${e.hold?row("멈춤 사유",[e.holdR,e.holdD?"재접촉 "+fd(e.holdD):""].filter(Boolean).join(" · ")):""}${row("다음 할 일",[e.na,e.nd?"("+fd(e.nd)+")":"(일정 미정)"].filter(Boolean).join(" "))}</table>`};
+  o+=H4(`진행 중 병원 (방문제안·검토협의·계약 ${R.prog.length}곳)`)+(R.prog.length?R.prog.map(card).join(""):`<p class="rp-empty">방문제안 단계 이후 진행 중인 병원이 없습니다.</p>`);
   const progIds=new Set(R.prog.map(h=>h.id));const plan=R.plan.filter(h=>!progIds.has(h.id));
   o+=H4(`다음 계획 (${plan.length}곳 · 다음 할 일 일정 순)`)+(plan.length?plan.map(card).join(""):`<p class="rp-empty">잡힌 계획이 없습니다.</p>`);
   const vc=k=>{const c={};R.tg.forEach(h=>{const v=E(h.id)[k];if(v)c[v]=(c[v]||0)+1});return Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([v,n])=>`${esc(v)} ${n}`).join(" · ")||"기록 없음"};
@@ -952,13 +956,13 @@ tr{page-break-inside:avoid}thead{display:table-header-group}.tip{max-width:1123p
 @page{size:A4 landscape;margin:10mm}@media print{body{background:#fff}.pg{margin:0;padding:0;max-width:none}.tip{display:none}}</style></head><body>
 <p class="tip">Ctrl+P(맥: ⌘+P)로 인쇄하거나 ‘PDF로 저장’을 선택하세요. 용지는 A4 가로로 맞춰져 있습니다.</p><div class="pg"><h1>병원 영업 목록</h1>
 <div class="m"><span>출력일 <b>${fd(todayStr())}</b></span><span>병원 수 <b>${rows.length.toLocaleString()}곳</b></span><span>조건 <b>${f.length?f.map(esc).join(" · "):"전체"}</b></span></div>
-<table><thead><tr><th>병원명</th><th>종류</th><th>주소</th><th class="r">병상</th><th class="r">수술실</th><th class="r">의사 수</th><th>구분</th><th>단계</th><th>우선</th><th>경쟁</th><th>최근 활동</th><th>병원 요청·협의</th></tr></thead><tbody>${body}</tbody></table>
+<table><thead><tr><th>병원명</th><th>종류</th><th>주소</th><th class="r">병상</th><th class="r">수술실</th><th class="r">의사 수</th><th>구분</th><th>단계</th><th>우선</th><th>경쟁</th><th>최근 활동</th><th>병원방문내용</th></tr></thead><tbody>${body}</tbody></table>
 <p class="s" style="margin-top:10px">KGA 세이브인스 · SAVE#WORK 병원영업관리 · 내부용</p></div></body></html>`}
 async function dlListPrint(){const n=filtered().length;if(n>600&&!dlListPrint.ok){dlListPrint.ok=true;toast(`${n.toLocaleString()}곳이라 수십 쪽이 됩니다. 필터를 줄이거나 한 번 더 누르면 그대로 받습니다.`);return}dlListPrint.ok=false;await saveFile(`병원목록_${todayStr().replace(/-/g,"")}_${n}곳.html`,listPrintHtml())}
 
 /* ================= excel ================= */
 function loadXLSX(){return window.XLSX?Promise.resolve(window.XLSX):new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>res(window.XLSX);s.onerror=()=>rej(new Error("load"));document.head.appendChild(s)})}
-const XHEAD=["지역","시군구","병원명","병원 종류","진료과목","정형외과 전문의","신경외과 전문의","전체의과 전문의","입원 병상수","수술실","설립구분","주소","전화번호","구분","영업단계","멈춤","재접촉일","멈춤 사유","우선순위","다음 할 일","다음 일정","실손24 연동","청구 키오스크","키오스크 업체","청구 부스","청구부스 업체","부스 공간","방문 환자","방문환자 세부","EMR","담당자","주요 반론","병원 요청·협의","계약일","운영 시작일","담당 설계사","철수일","철수 사유","방문 횟수","최근 활동일","최근 활동","최종 수정"];
+const XHEAD=["지역","시군구","병원명","병원 종류","진료과목","정형외과 전문의","신경외과 전문의","전체의과 전문의","입원 병상수","수술실","설립구분","주소","전화번호","구분","영업단계","멈춤","재접촉일","멈춤 사유","우선순위","다음 할 일","다음 일정","실손24 연동","청구 키오스크","키오스크 업체","청구 부스","청구부스 업체","부스 공간","방문 환자","방문환자 세부","EMR","담당자","주요 반론","병원방문내용","계약일","운영 시작일","담당 설계사","철수일","철수 사유","방문 횟수","최근 활동일","최근 활동","최종 수정"];
 const XK=["gb","stg","hold","holdD","holdR","pri","na","nd","s24","ki","kiV","bo","boV","sp","vp","vpn","emr","ct","ob","rq","ctD","opD","agent","wdD","wdR"];
 const rowOf=h=>{const e=E(h.id),la=lastAct(h.id);return [h.rg,h.sg,h.nm,h.ty,h.dept,h.os,h.ns,h.all,h.bed,h.or,h.est,h.addr,h.tel].concat(XK.map(k=>k==="gb"?GBL[e.gb||""]:k==="stg"?(e.gb?SN(stg(h.id)):""):k==="ct"?ctText(e):(e[k]||"")),[visits(h.id)||"",la?la.d:"",la?`${la.k} ${la.memo||""}`.trim():"",e.up?fmtTs(e.up):""])};
 const actRows=list=>[["일자","병원명","지역","시군구","활동","만난 사람","내용","결과"]].concat(list.map(a=>[a.d||"",a.h.nm,a.h.rg,a.h.sg,a.k,a.who||"",a.memo||"",a.res||""]));
