@@ -704,7 +704,7 @@ function drawDrawer(){const id=S.openId,h=HIDX.get(id),e=E(id),d=draft;
       <button class="x" id="drX" aria-label="닫기">×</button></div>
     <form class="dr-body" id="drForm" autocomplete="off">
       <div class="facts"><div><span>입원 병상</span><b>${h.bed}</b></div><div><span>수술실</span><b>${h.or}</b></div><div><span>정형/신경 전문의</span><b>${h.os} / ${h.ns}</b></div><div><span>전체 의과전문의</span><b>${h.all}</b></div></div>
-      <div class="addr"><span>${esc(h.addr)}</span><span class="mono">${esc(h.tel)}</span><button type="button" class="copy" data-copy="${esc(h.tel)}">전화번호 복사</button><button type="button" class="copy" data-copy="${esc(h.addr)}">주소 복사</button></div>
+      <div class="addr"><span>${esc(h.addr)}</span><span class="mono">${esc(h.tel)}</span><button type="button" class="copy" data-copy="${esc(h.tel)}">전화번호 복사</button><button type="button" class="copy" data-copy="${esc(h.addr)}">주소 복사</button>${h.custom&&S.canWrite?`<button type="button" class="copy" id="nbEdit">기본정보 수정</button>`:""}</div>
 
       <fieldset><legend>영업 진행</legend>
         ${F("구분",segH("gb",[["","미분류"]].concat(GB.map(x=>[x,GBL[x]])),g,"구분"),"full","영업대상으로 지정해야 영업 흐름·현황판에 잡힙니다 · 미분류는 아직 판단하지 않은 병원")}
@@ -763,6 +763,7 @@ function drawDrawer(){const id=S.openId,h=HIDX.get(id),e=E(id),d=draft;
     if(b.dataset.today){const k=b.dataset.today;draft[k]=todayStr();form.querySelector(`[data-k="${k}"]`).value=draft[k];suggest()}
     else if(b.dataset.plus){const k=b.dataset.plus;draft[k]=addDays(todayStr(),+b.dataset.n);form.querySelector(`[data-k="${k}"]`).value=draft[k]}
     else if(b.dataset.copy!==undefined){copy(b.dataset.copy)}
+    else if(b.id==="nbEdit"){closeDrawer();openAdd(id)}
     else if(b.dataset.k&&b.dataset.v!==undefined){const k=b.dataset.k,v=b.dataset.v;
       if(k==="__ak"){newAct.k=newAct.k===v?"":v;b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===newAct.k));suggest();return}
       const cur=draft[k]||"";draft[k]=(k==="stg"||k==="gb"||k==="hold")?v:(cur===v?"":v);if(k==="gb")draft._gbSet=true;
@@ -817,25 +818,33 @@ async function delAct(aid){try{await S.db.doc("acts/"+aid).delete();const id=S.o
   keepDraftAndRedraw();toast("활동 기록을 삭제했습니다")}catch(e){toast("삭제하지 못했습니다")}}
 
 /* add hospital */
-function openAdd(){
+function openAdd(eid){const eb=eid&&S.E[eid]&&S.E[eid].nb||null;const ev=k=>eb&&eb[k]!=null?esc(String(eb[k])):"";
   $("#drawerRoot").innerHTML=`<div class="scrim" id="scrim"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="adT">
-  <div class="dr-head"><div class="t"><h3 id="adT">병원 추가</h3><div class="meta">심평원 목록에 없는 신규 개원·이전 병원을 등록합니다.</div></div><button class="x" id="drX" aria-label="닫기">×</button></div>
+  <div class="dr-head"><div class="t"><h3 id="adT">${eb?"기본정보 수정":"병원 추가"}</h3><div class="meta">${eb?esc(eb.nm)+" · 직접 등록한 병원의 기본정보를 고칩니다.":"심평원 목록에 없는 신규 개원·이전 병원을 등록합니다."}</div></div><button class="x" id="drX" aria-label="닫기">×</button></div>
   <form class="dr-body" id="adForm"><fieldset><legend>기본정보</legend>
-   <div class="f"><label for="ad_rg">지역</label><select id="ad_rg">${REGIONS.map(r=>`<option>${r}</option>`).join("")}</select></div>
-   <div class="f"><label for="ad_sg">시군구</label><input id="ad_sg" placeholder="예) 강남구"></div>
-   <div class="f full"><label for="ad_nm">병원명</label><input id="ad_nm"></div>
-   <div class="f"><label for="ad_ty">병원 종류</label><select id="ad_ty"><option>병원</option><option>의원</option><option>종합병원</option></select></div>
-   <div class="f"><label for="ad_dept">진료과목</label><input id="ad_dept" placeholder="정형외과·신경외과"></div>
-   <div class="f"><label for="ad_bed">입원 병상수</label><input id="ad_bed" type="number" min="0"></div>
-   <div class="f"><label for="ad_or">수술실</label><input id="ad_or" type="number" min="0"></div>
-   <div class="f full"><label for="ad_addr">주소</label><input id="ad_addr"></div>
-   <div class="f"><label for="ad_tel">대표 전화</label><input id="ad_tel"></div>
+   <div class="f"><label for="ad_rg">지역</label><select id="ad_rg">${REGIONS.map(r=>`<option${eb&&eb.rg===r?" selected":""}>${r}</option>`).join("")}</select></div>
+   <div class="f"><label for="ad_sg">시군구</label><input id="ad_sg" placeholder="예) 강남구" value="${ev("sg")}"></div>
+   <div class="f full"><label for="ad_nm">병원명</label><input id="ad_nm" value="${ev("nm")}"></div>
+   <div class="f"><label for="ad_ty">병원 종류</label><select id="ad_ty">${["병원","의원","종합병원"].map(t=>`<option${eb&&eb.ty===t?" selected":""}>${t}</option>`).join("")}</select></div>
+   <div class="f"><label for="ad_dept">진료과목</label><input id="ad_dept" placeholder="정형외과·신경외과" value="${ev("dept")}"></div>
+   <div class="f"><label for="ad_bed">입원 병상수</label><input id="ad_bed" type="number" min="0" value="${ev("bed")}"></div>
+   <div class="f"><label for="ad_or">수술실</label><input id="ad_or" type="number" min="0" value="${ev("or")}"></div>
+   <div class="f"><label for="ad_os">정형외과 전문의</label><input id="ad_os" type="number" min="0" value="${ev("os")}"></div>
+   <div class="f"><label for="ad_ns">신경외과 전문의</label><input id="ad_ns" type="number" min="0" value="${ev("ns")}"></div>
+   <div class="f"><label for="ad_all">전체 의과전문의</label><input id="ad_all" type="number" min="0" value="${ev("all")}"></div>
+   <div class="f full"><label for="ad_addr">주소</label><input id="ad_addr" value="${ev("addr")}"></div>
+   <div class="f"><label for="ad_tel">대표 전화</label><input id="ad_tel" value="${ev("tel")}"></div>
   </fieldset></form>
-  <div class="dr-foot"><span class="msg" id="adMsg"></span><button class="btn ghost" id="drCancel" type="button">닫기</button><button class="btn pri" id="adSave" type="button" ${S.db&&S.canWrite?"":"disabled"}>등록</button></div></aside>`;
+  <div class="dr-foot"><span class="msg" id="adMsg"></span><button class="btn ghost" id="drCancel" type="button">닫기</button><button class="btn pri" id="adSave" type="button" ${S.db&&S.canWrite?"":"disabled"}>${eb?"저장":"등록"}</button></div></aside>`;
   $("#drX").onclick=$("#drCancel").onclick=$("#scrim").onclick=closeDrawer;document.addEventListener("keydown",escClose);
   $("#adSave").onclick=async()=>{const g=k=>$("#ad_"+k).value.trim();if(!g("nm")||!g("sg")){$("#adMsg").textContent="시군구와 병원명은 꼭 입력하세요.";return}
-    const rg=g("rg"),p=PREFIX[rg];let n=9001;while(HIDX.has(p+"-"+n))n++;const id=p+"-"+n;
-    const nb={rg,sg:g("sg"),nm:g("nm"),ty:g("ty"),dept:g("dept"),bed:+g("bed")||0,or:+g("or")||0,addr:g("addr"),tel:g("tel")};
+    const rg=g("rg"),os=+g("os")||0,ns=+g("ns")||0;let all=+g("all")||0;if(all&&all<os+ns){$("#adMsg").textContent="전체 의과전문의는 정형+신경 전문의 수보다 작을 수 없습니다.";return}
+    const nb={rg,sg:g("sg"),nm:g("nm"),ty:g("ty"),dept:g("dept"),bed:+g("bed")||0,or:+g("or")||0,os,ns,all,addr:g("addr"),tel:g("tel")};
+    if(eb){const doc={...S.E[eid],nb,up:new Date().toISOString()};
+      try{await S.db.doc("hosp/"+eid).set(doc);S.E[eid]=doc;const h=HIDX.get(eid);if(h)Object.assign(h,{rg,sg:nb.sg,nm:nb.nm,ty:nb.ty,dept:nb.dept,os,ns,all,bed:nb.bed,or:nb.or,addr:nb.addr,tel:nb.tel});
+        try{await S.db.collection("logs").add({hid:eid,nm:nb.nm,rg,ts:doc.up,ch:[["기본정보 수정"]]})}catch(e){}
+        closeDrawer();toast(`${nb.nm} 기본정보 저장`);openDrawer(eid);render()}catch(e){$("#adMsg").textContent="저장하지 못했습니다. 잠시 후 다시 시도하세요."}return}
+    const p=PREFIX[rg];let n=9001;while(HIDX.has(p+"-"+n))n++;const id=p+"-"+n;
     const doc={nb,gb:"영업대상",stg:STAGES[0],up:new Date().toISOString()};
     try{await S.db.doc("hosp/"+id).set(doc);S.E[id]=doc;syncCustom();try{await S.db.collection("logs").add({hid:id,nm:nb.nm,rg,ts:doc.up,ch:[["병원 추가"]]})}catch(e){}
       closeDrawer();toast(`${nb.nm} 등록`);openDrawer(id);render()}catch(e){$("#adMsg").textContent="등록하지 못했습니다. 잠시 후 다시 시도하세요."}};
